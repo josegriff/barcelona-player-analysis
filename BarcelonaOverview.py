@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 
 data = {
     'Player': ['Eric Garcia', 'Pau Cubarsi', 'Jules Kounde', 'Lamine Yamal', 
@@ -132,13 +133,51 @@ df['xAG per 90'] = df['xAG'] / df['Mins Played'] * 90
 df['Assists per 90'] = df['Assists'] / df['Mins Played'] * 90
 df['Progressive Carries per 90'] = df['Progessive Carries'] / df['Mins Played'] * 90
 df['Progressive Passes per 90'] = df['Progessive Passes'] / df['Mins Played'] * 90
+df['Total Progressive Actions per 90'] = (df['Progessive Carries'] + df['Progessive Passes']) / df['Mins Played'] * 90
 df['Progressive Passes Received per 90'] = df['Progessive Passes Received'] / df['Mins Played'] * 90
 df['Yellow Cards per 90'] = df['Yellow Cards'] / df['Mins Played'] * 90
 df['Red Cards per 90'] = df['Red Cards'] / df['Mins Played'] * 90
 
-#df.groupby('Position')['Goals per 90'].mean() 
-print(df.iloc[1:4, 0])
-#print (df['Mins Played'].mean())
 
-#print(df[df['Mins Played'] > 500].sort_values(by='xG per 90', ascending=False)[['Player', 'Position', 'Mins Played', 'Goals per 90', 'xG per 90']])
-df.to_csv('BarcelonaPlayerStats.csv', index=False)
+#Which Barcelona attackers outperforms their xG per 90 with a minimum of 500 minutes played?
+attackers = df[
+        (df['Position'].str.contains('FWD')) & 
+        (df['Mins Played'] > 500)
+        ]
+
+attackers['xG_diff'] = attackers['Goals per 90'] - attackers['xG per 90']
+
+outperformers = attackers[attackers['xG_diff'] > 0]
+
+outperformers_reset = outperformers.sort_values(by='xG_diff', ascending=False).reset_index(drop=True)
+outperformers_reset.index += 1
+
+print(outperformers_reset[['Player', 'Mins Played', 'Goals', 'Goals per 90', 'xG per 90', 'xG_diff']])
+
+#Grouped analysis by who has the most progressive actions per 90 minutes
+print("\nTop 10 Players by Total Progressive Actions per 90 Minutes and a minimum of 6 90s played:\n")
+
+progressive_actions = df[['Player', 'Mins Played', 
+                          'Progressive Carries per 90', 
+                          'Progressive Passes per 90', 
+                          'Total Progressive Actions per 90']]
+progressive_actions = progressive_actions[progressive_actions['Mins Played'] >= 540]
+progressive_actions_sorted = progressive_actions.sort_values(by='Total Progressive Actions per 90', ascending=False).reset_index(drop=True)
+progressive_actions_sorted.index += 1
+print(progressive_actions_sorted.head(10))
+
+top_attackers = df[
+        (df['Position'].str.contains('FWD')) &
+        (df['Mins Played'] > 500)
+        ].sort_values(by='Goals per 90', ascending=False)
+
+top_attackers.plot(
+        x='Player', 
+        y=['Goals per 90', 'xG per 90'], 
+        kind='bar', 
+        title='Barcelona Top Attackers: Goals per 90 vs xG per 90 (500+ mins)', 
+        figsize=(10,6)
+)
+plt.savefig('figures/Barcelona_Top_Attackers_Goals_vs_xG_per_90', dpi=300, bbox_inches='tight')
+plt.tight_layout()
+plt.show()
